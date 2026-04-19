@@ -60,6 +60,8 @@ export default function Dashboard() {
   };
 
   // Fetch logs for the selected date
+  // NOTE: Using client-side date filtering to avoid Firestore composite index requirement
+  // (combining "in" operator with "==" requires a composite index)
   useEffect(() => {
     if (!user || !mounted) return;
     setLoading(true);
@@ -67,27 +69,32 @@ export default function Dashboard() {
     const studentIdStr = getStudentId();
     const studentIdNum = parseInt(studentIdStr);
     
-    // Fix: Use local date string instead of toISOString (UTC) to avoid 1-day mismatch
     const yyyy = selectedDate.getFullYear();
     const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const dd = String(selectedDate.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    console.log("Fetching logs for:", { studentIdStr, studentIdNum, dateStr });
+    console.log("[Dashboard] Fetching logs for:", { studentIdStr, studentIdNum, dateStr });
 
+    // Use simple "in" query only (no composite index needed)
+    // Then filter by date on the client side
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [studentIdStr, studentIdNum]),
-      where("date", "==", dateStr)
+      where("studentId", "in", [studentIdStr, studentIdNum])
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
+        console.log("[Dashboard] Total docs from Firestore:", snapshot.docs.length);
+        
+        const allData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...(doc.data() as Omit<AttendanceLog, "id">),
         }));
+
+        // Client-side date filtering
+        const data = allData.filter((log) => log.date === dateStr);
 
         data.sort((a, b) => {
           const tA = a.timestamp?.toMillis() || 0;
@@ -95,12 +102,12 @@ export default function Dashboard() {
           return tA - tB;
         });
 
-        console.log("Daily logs fetched:", data);
+        console.log("[Dashboard] Filtered daily logs:", data);
         setLogs(data);
         setLoading(false);
       },
       (error) => {
-        console.error("Firestore error (daily logs):", error);
+        console.error("[Dashboard] Firestore error (daily logs):", error.code, error.message);
         setLoading(false);
       }
     );
@@ -108,7 +115,7 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [user, selectedDate, mounted]);
 
-  // Fetch monthly stats
+  // Fetch monthly stats (re-uses the same query, computed from client-side filtering)
   useEffect(() => {
     if (!user || !mounted) return;
     
@@ -125,14 +132,11 @@ export default function Dashboard() {
       (snapshot) => {
         const allLogs = snapshot.docs.map((doc) => doc.data() as AttendanceLog);
 
-        const monthLogs = allLogs.filter((l) => {
-          if (!l.timestamp) return false;
-          const d = l.timestamp.toDate();
-          return (
-            d.getMonth() === selectedDate.getMonth() &&
-            d.getFullYear() === selectedDate.getFullYear()
-          );
-        });
+        console.log("[Dashboard] Monthly stats - total logs:", allLogs.length);
+
+        // Filter by date string prefix (YYYY-MM) for reliability
+        const monthPrefix = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`;
+        const monthLogs = allLogs.filter((l) => l.date && l.date.startsWith(monthPrefix));
 
         const inLogs = monthLogs.filter((l) => l.type === "IN");
         const totalMin = monthLogs.reduce(
@@ -147,7 +151,7 @@ export default function Dashboard() {
         });
       },
       (error) => {
-        console.error("Firestore error (monthly stats):", error);
+        console.error("[Dashboard] Firestore error (monthly stats):", error.code, error.message);
       }
     );
 

@@ -56,6 +56,7 @@ export default function History() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        console.log("[History] Total docs from Firestore:", snapshot.docs.length);
         const allLogs = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...(doc.data() as Omit<AttendanceLog, "id">),
@@ -80,7 +81,7 @@ export default function History() {
         setLoading(false);
       },
       (error) => {
-        console.error("Firestore error (history):", error);
+        console.error("[History] Firestore error:", error.code, error.message);
         setLoading(false);
       }
     );
