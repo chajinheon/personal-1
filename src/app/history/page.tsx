@@ -6,14 +6,14 @@ import { collection, query, where, onSnapshot, Timestamp } from "firebase/firest
 import { useAuth } from "@/components/AuthProvider";
 import Sidebar from "@/components/Sidebar";
 
-// Interfaces to eliminate red markers
+// Interfaces matching actual Firestore schema
 interface AttendanceLog {
   id: string;
-  studentId: string | number;
-  type: "IN" | "OUT";
-  date: string;
+  studentId: string;
+  entryType: "checkin" | "checkout"; // actual field in Firestore
+  dateStr?: string; // computed from timestamp
   timestamp: Timestamp;
-  studyDuration?: number;
+  studyDuration?: number | string;
 }
 
 interface GroupedLog {
@@ -44,38 +44,52 @@ export default function History() {
     setLoading(true);
 
     const studentIdStr = getStudentId();
-    const studentIdNum = parseInt(studentIdStr);
+    if (!studentIdStr) { setLoading(false); return; }
 
-    console.log("History: Fetching logs for studentId:", { studentIdStr, studentIdNum });
+    console.log("[History] Fetching logs for studentId:", studentIdStr);
 
+    // Query by string studentId only
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [studentIdStr, studentIdNum])
+      where("studentId", "==", studentIdStr)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         console.log("[History] Total docs from Firestore:", snapshot.docs.length);
-        const allLogs = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<AttendanceLog, "id">),
-        }));
+
+        const allLogs = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          // Compute dateStr from timestamp (no separate date field in DB)
+          const ts: Timestamp = data.timestamp;
+          const dateObj = ts?.toDate ? ts.toDate() : new Date();
+          const y = dateObj.getFullYear();
+          const mo = String(dateObj.getMonth() + 1).padStart(2, "0");
+          const d = String(dateObj.getDate()).padStart(2, "0");
+          return {
+            id: docSnap.id,
+            ...(data as Omit<AttendanceLog, "id" | "dateStr">),
+            dateStr: `${y}-${mo}-${d}`,
+          };
+        });
 
         const grouped: Record<string, GroupedLog> = {};
         allLogs.forEach((log) => {
-          const date = log.date || "unknown";
+          const date = log.dateStr || "unknown";
           if (!grouped[date]) {
             grouped[date] = { date, in: null, out: null, duration: 0 };
           }
-          if (log.type === "IN") grouped[date].in = log;
-          if (log.type === "OUT") grouped[date].out = log;
-          if (log.studyDuration) grouped[date].duration += log.studyDuration;
+          // entryType is "checkin"/"checkout" in actual Firestore
+          if (log.entryType === "checkin") grouped[date].in = log;
+          if (log.entryType === "checkout") grouped[date].out = log;
+          const dur = typeof log.studyDuration === "number" ? log.studyDuration : 0;
+          if (dur) grouped[date].duration += dur;
         });
 
-        const sorted = Object.values(grouped).sort((a, b) => {
-          return b.date.localeCompare(a.date);
-        });
+        const sorted = Object.values(grouped).sort((a, b) =>
+          b.date.localeCompare(a.date)
+        );
 
         setLogs(sorted);
         setLoading(false);

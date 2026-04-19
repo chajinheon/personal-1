@@ -13,14 +13,14 @@ import { useAuth } from "@/components/AuthProvider";
 import { useDate } from "@/components/DateProvider";
 import Sidebar from "@/components/Sidebar";
 
-// Define interfaces to eliminate red markers (type errors)
+// Define interfaces matching the actual Firestore schema
 interface AttendanceLog {
   id: string;
-  studentId: string | number;
-  type: "IN" | "OUT";
-  date: string;
+  studentId: string;
+  entryType: "checkin" | "checkout"; // actual field name in Firestore
+  studyDuration?: number | string;
   timestamp: Timestamp;
-  studyDuration?: number;
+  dateStr?: string; // computed client-side from timestamp
 }
 
 interface DashboardStats {
@@ -60,27 +60,25 @@ export default function Dashboard() {
   };
 
   // Fetch logs for the selected date
-  // NOTE: Using client-side date filtering to avoid Firestore composite index requirement
-  // (combining "in" operator with "==" requires a composite index)
+  // Uses client-side date filtering (computed from timestamp, not a separate date field)
   useEffect(() => {
     if (!user || !mounted) return;
     setLoading(true);
     
     const studentIdStr = getStudentId();
-    const studentIdNum = parseInt(studentIdStr);
-    
+    if (!studentIdStr) { setLoading(false); return; }
+
     const yyyy = selectedDate.getFullYear();
     const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const dd = String(selectedDate.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    console.log("[Dashboard] Fetching logs for:", { studentIdStr, studentIdNum, dateStr });
+    console.log("[Dashboard] Fetching logs for:", { studentIdStr, dateStr });
 
-    // Use simple "in" query only (no composite index needed)
-    // Then filter by date on the client side
+    // Query by string studentId only (DB stores as string)
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [studentIdStr, studentIdNum])
+      where("studentId", "==", studentIdStr)
     );
 
     const unsubscribe = onSnapshot(
@@ -88,19 +86,24 @@ export default function Dashboard() {
       (snapshot) => {
         console.log("[Dashboard] Total docs from Firestore:", snapshot.docs.length);
         
-        const allData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...(doc.data() as Omit<AttendanceLog, "id">),
-        }));
-
-        // Client-side date filtering
-        const data = allData.filter((log) => log.date === dateStr);
-
-        data.sort((a, b) => {
-          const tA = a.timestamp?.toMillis() || 0;
-          const tB = b.timestamp?.toMillis() || 0;
-          return tA - tB;
+        const allData = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          // Compute dateStr from timestamp (no separate date field in DB)
+          const ts: Timestamp = data.timestamp;
+          const dateObj = ts?.toDate ? ts.toDate() : new Date();
+          const y = dateObj.getFullYear();
+          const mo = String(dateObj.getMonth() + 1).padStart(2, "0");
+          const d = String(dateObj.getDate()).padStart(2, "0");
+          return {
+            id: docSnap.id,
+            ...(data as Omit<AttendanceLog, "id" | "dateStr">),
+            dateStr: `${y}-${mo}-${d}`,
+          };
         });
+
+        // Filter by selected date
+        const data = allData.filter((log) => log.dateStr === dateStr);
+        data.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
         console.log("[Dashboard] Filtered daily logs:", data);
         setLogs(data);
@@ -115,37 +118,49 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [user, selectedDate, mounted]);
 
-  // Fetch monthly stats (re-uses the same query, computed from client-side filtering)
+  // Fetch monthly stats
   useEffect(() => {
     if (!user || !mounted) return;
     
     const studentIdStr = getStudentId();
-    const studentIdNum = parseInt(studentIdStr);
+    if (!studentIdStr) return;
 
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [studentIdStr, studentIdNum])
+      where("studentId", "==", studentIdStr)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const allLogs = snapshot.docs.map((doc) => doc.data() as AttendanceLog);
+        console.log("[Dashboard] Monthly stats - total docs:", snapshot.docs.length);
 
-        console.log("[Dashboard] Monthly stats - total logs:", allLogs.length);
+        const allLogs = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const ts: Timestamp = data.timestamp;
+          const dateObj = ts?.toDate ? ts.toDate() : new Date();
+          return {
+            ...(data as AttendanceLog),
+            dateStr: `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`,
+            _month: dateObj.getMonth(),
+            _year: dateObj.getFullYear(),
+          };
+        });
 
-        // Filter by date string prefix (YYYY-MM) for reliability
-        const monthPrefix = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`;
-        const monthLogs = allLogs.filter((l) => l.date && l.date.startsWith(monthPrefix));
-
-        const inLogs = monthLogs.filter((l) => l.type === "IN");
-        const totalMin = monthLogs.reduce(
-          (acc, curr) => acc + (curr.studyDuration || 0),
-          0
+        // Filter to selected month
+        const monthLogs = allLogs.filter(
+          (l) => l._month === selectedDate.getMonth() && l._year === selectedDate.getFullYear()
         );
+
+        // entryType is "checkin" / "checkout" in actual Firestore data
+        const checkinLogs = monthLogs.filter((l) => l.entryType === "checkin");
+        const totalMin = monthLogs.reduce((acc, curr) => {
+          const dur = typeof curr.studyDuration === "number" ? curr.studyDuration : 0;
+          return acc + dur;
+        }, 0);
         
         setStats({
-          monthlySessions: inLogs.length,
+          monthlySessions: checkinLogs.length,
           totalMinutes: totalMin,
           avgEntryTime: "18:42",
         });
@@ -158,9 +173,9 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [user, selectedDate, mounted]);
 
-  // Parse log data
-  const inLog = logs.find((l) => l.type === "IN");
-  const outLog = logs.find((l) => l.type === "OUT");
+  // Parse log data — entryType is "checkin"/"checkout" in actual Firestore
+  const inLog = logs.find((l) => l.entryType === "checkin");
+  const outLog = logs.find((l) => l.entryType === "checkout");
 
   const formatTime = (log: AttendanceLog | undefined) => {
     if (!log?.timestamp) return "--:--";
