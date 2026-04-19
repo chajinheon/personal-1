@@ -16,9 +16,11 @@ export default function History() {
   useEffect(() => {
     if (!user) return;
 
+    const studentIdFromEmail = user.email?.split('@')[0] || "";
+
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "==", user.uid),
+      where("studentId", "in", [user.uid, studentIdFromEmail]),
       orderBy("timestamp", "desc")
     );
 

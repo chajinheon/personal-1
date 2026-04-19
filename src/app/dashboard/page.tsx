@@ -28,11 +28,16 @@ export default function Dashboard() {
     if (!user) return;
 
     setLoading(true);
+    // Extract studentId from email (e.g., 24293 from 24293@hmh.or.kr)
+    const studentIdFromEmail = user.email?.split('@')[0] || "";
+    
     // Fetch logs for the selected date
     const dateStr = selectedDate.toISOString().split('T')[0];
+    
+    // Try querying by studentId (from email) first, as it's common in this school system
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "==", user.uid),
+      where("studentId", "in", [user.uid, studentIdFromEmail]),
       where("date", "==", dateStr),
       orderBy("timestamp", "asc")
     );
@@ -53,12 +58,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
+    const studentIdFromEmail = user.email?.split('@')[0] || "";
     const startOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     const endOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
     
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "==", user.uid),
+      where("studentId", "in", [user.uid, studentIdFromEmail]),
       where("timestamp", ">=", Timestamp.fromDate(startOfMonth)),
       where("timestamp", "<=", Timestamp.fromDate(endOfMonth))
     );
