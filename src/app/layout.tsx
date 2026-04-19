@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from "@/components/AuthProvider";
+import { DateProvider } from "@/components/DateProvider";
 
 export default function RootLayout({
   children,
@@ -34,7 +35,11 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased font-body flex h-screen overflow-hidden bg-background text-on-surface">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <DateProvider>
+            {children}
+          </DateProvider>
+        </AuthProvider>
       </body>
     </html>
   );

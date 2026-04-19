@@ -1,248 +1,48 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Newsreader:ital,wght@0,500;0,600;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
-@layer base {
-  :root {
-    --on-tertiary-container: #c4c9b2;
-    --on-secondary-container: #785e3e;
-    --on-tertiary: #ffffff;
-    --secondary: #735a3a;
-    --on-primary-fixed-variant: #2e4e35;
-    --inverse-primary: #abd0af;
-    --tertiary-fixed-dim: #c4c9b1;
-    --on-primary: #ffffff;
-    --error: #ba1a1a;
-    --tertiary: #393e2c;
-    --surface-container-high: #eae8e3;
-    --surface-container: #f0eee9;
-    --on-secondary: #ffffff;
-    --surface-variant: #e4e2dd;
-    --outline: #727971;
-    --on-secondary-fixed: #291801;
-    --background: #fbf9f4;
-    --on-surface: #1b1c19;
-    --surface-container-highest: #e4e2dd;
-    --error-container: #ffdad6;
-    --on-secondary-fixed-variant: #594325;
-    --inverse-surface: #30312e;
-    --surface: #fbf9f4;
-    --primary: #23422a;
-    --on-surface-variant: #424842;
-    --on-error-container: #93000a;
-    --surface-dim: #dbdad5;
-    --surface-bright: #fbf9f4;
-    --secondary-fixed: #ffddb6;
-    --on-background: #1b1c19;
-    --tertiary-fixed: #e0e5cc;
-    --surface-container-lowest: #ffffff;
-    --tertiary-container: #505542;
-    --on-tertiary-fixed: #191d0e;
-    --surface-container-low: #f5f3ee;
-    --inverse-on-surface: #f2f1ec;
-    --on-error: #ffffff;
-    --primary-fixed-dim: #abd0af;
-    --primary-fixed: #c7ecca;
-    --on-tertiary-fixed-variant: #444937;
-    --on-primary-container: #acd0af;
-    --secondary-fixed-dim: #e2c19b;
-    --secondary-container: #fddab2;
-    --surface-tint: #45664b;
-    --primary-container: #3a5a40;
-    --outline-variant: #c2c8bf;
-    --on-primary-fixed: #02210c;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-    --bg: #F5F2ED;
-    --card-bg: #FFFFFF;
-    --sage: #5A6B5D;
-    --clay: #D4A373;
-    --ink: #2D2D2D;
-    --ink-light: #6B6B6B;
-    --border: rgba(90, 107, 93, 0.1);
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-    --font-serif: 'Georgia', 'Times New Roman', serif;
-    --font-sans: 'Helvetica Neue', Arial, sans-serif;
-  }
-
-  body {
-    background-color: var(--background);
-    color: var(--on-surface);
-    font-family: 'Manrope', sans-serif;
-  }
+:root {
+  --primary: #23422a;
+  --background: #fbf9f4;
 }
 
-@layer components {
-  .logo {
-    font-family: var(--font-serif);
-    font-weight: bold;
-    font-size: 28px;
-    letter-spacing: 2px;
-    color: var(--sage);
-  }
-
-  .school-tag {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--ink-light);
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    border-radius: 4px;
-  }
-
-  .card {
-    background: var(--card-bg);
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-  }
-
-  .stat-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--ink-light);
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .streak-card {
-    background-color: var(--sage);
-    color: white;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 180px;
-  }
-
-  .streak-value {
-    font-size: 64px;
-    font-family: var(--font-serif);
-    font-weight: 900;
-    line-height: 1;
-  }
-
-  .data-point {
-    font-size: 24px;
-    font-family: var(--font-serif);
-    color: var(--sage);
-  }
-
-  .ai-message-card {
-    position: relative;
-    background-color: white;
-    padding: 48px;
-    min-height: 320px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .ai-label {
-    position: absolute;
-    top: 32px;
-    left: 48px;
-    font-size: 10px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--clay);
-    font-weight: bold;
-  }
-
-  .ai-content {
-    font-family: var(--font-serif);
-    font-size: 32px;
-    line-height: 1.5;
-    color: var(--ink);
-    font-style: italic;
-  }
-
-  .day-dot {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    border: 1px solid var(--border);
-  }
-
-  .day-dot.active {
-    background-color: var(--clay);
-    color: white;
-    border-color: var(--clay);
-  }
-
-  .day-dot.checked {
-    background-color: var(--sage);
-    color: white;
-    border-color: var(--sage);
-  }
-
-  .status-badge {
-    position: absolute;
-    top: 32px;
-    right: 48px;
-    background: #E8F0E9;
-    color: var(--sage);
-    padding: 6px 12px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 600;
-  }
+body {
+  font-family: 'Manrope', sans-serif;
+  background-color: #fbf9f4;
+  color: #1b1c19;
+  -webkit-font-smoothing: antialiased;
 }
 
-@theme {
-  --color-on-tertiary-container: var(--on-tertiary-container);
-  --color-on-secondary-container: var(--on-secondary-container);
-  --color-on-tertiary: var(--on-tertiary);
-  --color-secondary: var(--secondary);
-  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
-  --color-inverse-primary: var(--inverse-primary);
-  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
-  --color-on-primary: var(--on-primary);
-  --color-error: var(--error);
-  --color-tertiary: var(--tertiary);
-  --color-surface-container-high: var(--surface-container-high);
-  --color-surface-container: var(--surface-container);
-  --color-on-secondary: var(--on-secondary);
-  --color-surface-variant: var(--surface-variant);
-  --color-outline: var(--outline);
-  --color-on-secondary-fixed: var(--on-secondary-fixed);
-  --color-background: var(--background);
-  --color-on-surface: var(--on-surface);
-  --color-surface-container-highest: var(--surface-container-highest);
-  --color-error-container: var(--error-container);
-  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
-  --color-inverse-surface: var(--inverse-surface);
-  --color-surface: var(--surface);
-  --color-primary: var(--primary);
-  --color-on-surface-variant: var(--on-surface-variant);
-  --color-on-error-container: var(--on-error-container);
-  --color-surface-dim: var(--surface-dim);
-  --color-surface-bright: var(--surface-bright);
-  --color-secondary-fixed: var(--secondary-fixed);
-  --color-on-background: var(--on-background);
-  --color-tertiary-fixed: var(--tertiary-fixed);
-  --color-surface-container-lowest: var(--surface-container-lowest);
-  --color-tertiary-container: var(--tertiary-container);
-  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
-  --color-surface-container-low: var(--surface-container-low);
-  --color-inverse-on-surface: var(--inverse-on-surface);
-  --color-on-error: var(--on-error);
-  --color-primary-fixed-dim: var(--primary-fixed-dim);
-  --color-primary-fixed: var(--primary-fixed);
-  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
-  --color-on-primary-container: var(--on-primary-container);
-  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
-  --color-secondary-container: var(--secondary-container);
-  --color-surface-tint: var(--surface-tint);
-  --color-primary-container: var(--primary-container);
-  --color-outline-variant: var(--outline-variant);
-  --color-on-primary-fixed: var(--on-primary-fixed);
+h1, h2, h3, h4, .font-headline {
+  font-family: 'Newsreader', serif;
+}
 
-  --font-headline: 'Newsreader', serif;
-  --font-body: 'Manrope', sans-serif;
-  --font-label: 'Manrope', sans-serif;
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0eee9; 
+}
+::-webkit-scrollbar-thumb {
+  background: #c2c8bf; 
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #727971; 
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-white;
+  }
 }
