@@ -120,7 +120,7 @@ export default function Sidebar() {
 
         {/* Profile */}
         <div className="flex items-center space-x-4 mb-8">
-          <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/20">
+          <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant">
             {user?.photoURL ? (
               <img
                 src={user.photoURL}

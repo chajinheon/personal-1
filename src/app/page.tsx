@@ -91,8 +91,8 @@ export default function Login() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#FDFCFB] overflow-hidden relative">
       {/* Background Decorative Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary/5 rounded-full blur-[120px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'rgba(35,66,42,0.05)' }} />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'rgba(115,90,58,0.05)' }} />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -105,7 +105,8 @@ export default function Login() {
             <motion.div 
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-6"
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
+              style={{ backgroundColor: 'rgba(35,66,42,0.1)' }}
             >
               <span className="material-symbols-outlined text-3xl text-primary font-bold">account_balance</span>
             </motion.div>
@@ -159,7 +160,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-stone-900"
+                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-stone-900"
                   />
                 </div>
                 <div className="space-y-1">
@@ -170,13 +171,13 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-stone-900"
+                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-stone-900"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-70 shadow-lg shadow-primary/20"
+                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-70 shadow-lg"
                 >
                   로그인
                 </button>

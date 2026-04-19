@@ -6,9 +6,8 @@ import {
   collection,
   query,
   where,
-  orderBy,
+  getDocs,
   onSnapshot,
-  Timestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { useDate } from "@/components/DateProvider";
@@ -32,70 +31,92 @@ export default function Dashboard() {
 
   const isSelectedToday = todayCheck(selectedDate);
 
-  // Fetch logs for the selected date
+  // Get the student ID from email
+  const getStudentId = () => {
+    if (!user?.email) return "";
+    return user.email.split("@")[0];
+  };
+
+  // Fetch logs for the selected date - simplified query without orderBy
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const studentIdFromEmail = user.email?.split("@")[0] || "";
+    const studentId = getStudentId();
     const dateStr = selectedDate.toISOString().split("T")[0];
 
+    // Simple query: just studentId + date, no orderBy
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [user.uid, studentIdFromEmail]),
-      where("date", "==", dateStr),
-      orderBy("timestamp", "asc")
+      where("studentId", "==", studentId),
+      where("date", "==", dateStr)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setLogs(data);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        // Sort client-side
+        data.sort((a: any, b: any) => {
+          const tA = a.timestamp?.toDate?.()?.getTime?.() || 0;
+          const tB = b.timestamp?.toDate?.()?.getTime?.() || 0;
+          return tA - tB;
+        });
+        setLogs(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Firestore query error (daily logs):", error);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user, selectedDate]);
 
-  // Fetch monthly stats
+  // Fetch monthly stats - simplified query
   useEffect(() => {
     if (!user) return;
-    const studentIdFromEmail = user.email?.split("@")[0] || "";
-    const startOfMonth = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      1
-    );
-    const endOfMonth = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + 1,
-      0,
-      23,
-      59,
-      59
-    );
+    const studentId = getStudentId();
 
+    // Get all logs for this student, filter by month client-side
     const q = query(
       collection(db, "attendance_logs"),
-      where("studentId", "in", [user.uid, studentIdFromEmail]),
-      where("timestamp", ">=", Timestamp.fromDate(startOfMonth)),
-      where("timestamp", "<=", Timestamp.fromDate(endOfMonth))
+      where("studentId", "==", studentId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allLogs = snapshot.docs.map((doc) => doc.data());
-      const inLogs = allLogs.filter((l: any) => l.type === "IN");
-      const totalMin = allLogs.reduce(
-        (acc, curr: any) => acc + (curr.studyDuration || 0),
-        0
-      );
-      setStats({
-        monthlySessions: inLogs.length,
-        totalMinutes: totalMin,
-        avgEntryTime: "18:42",
-      });
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const allLogs = snapshot.docs.map((doc) => doc.data());
+
+        // Filter by current month client-side
+        const monthLogs = allLogs.filter((l: any) => {
+          if (!l.timestamp?.toDate) return false;
+          const d = l.timestamp.toDate();
+          return (
+            d.getMonth() === selectedDate.getMonth() &&
+            d.getFullYear() === selectedDate.getFullYear()
+          );
+        });
+
+        const inLogs = monthLogs.filter((l: any) => l.type === "IN");
+        const totalMin = monthLogs.reduce(
+          (acc, curr: any) => acc + (curr.studyDuration || 0),
+          0
+        );
+        setStats({
+          monthlySessions: inLogs.length,
+          totalMinutes: totalMin,
+          avgEntryTime: "18:42",
+        });
+      },
+      (error) => {
+        console.error("Firestore query error (monthly):", error);
+      }
+    );
 
     return () => unsubscribe();
   }, [user, selectedDate]);
@@ -106,26 +127,44 @@ export default function Dashboard() {
 
   const formatTime = (log: any) => {
     if (!log) return "--:--";
-    const d = log.timestamp.toDate();
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    try {
+      const d = log.timestamp.toDate();
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "--:--";
+    }
   };
 
   const calcDuration = () => {
-    if (inLog && outLog) {
-      const diff =
-        outLog.timestamp.toDate().getTime() -
-        inLog.timestamp.toDate().getTime();
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-      return { h, m, s, display: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` };
-    } else if (inLog && isSelectedToday) {
-      const diff =
-        new Date().getTime() - inLog.timestamp.toDate().getTime();
-      const h = Math.floor(diff / (1000 * 60 * 60));
-      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((diff % (1000 * 60)) / 1000);
-      return { h, m, s, display: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` };
+    try {
+      if (inLog && outLog) {
+        const diff =
+          outLog.timestamp.toDate().getTime() -
+          inLog.timestamp.toDate().getTime();
+        const h = Math.floor(diff / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        return {
+          h,
+          m,
+          s,
+          display: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`,
+        };
+      } else if (inLog && isSelectedToday) {
+        const diff =
+          new Date().getTime() - inLog.timestamp.toDate().getTime();
+        const h = Math.floor(diff / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        return {
+          h,
+          m,
+          s,
+          display: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`,
+        };
+      }
+    } catch (e) {
+      console.error("Duration calc error:", e);
     }
     return { h: 0, m: 0, s: 0, display: "00:00:00" };
   };
@@ -164,10 +203,10 @@ export default function Dashboard() {
             </a>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="hidden md:block py-2 px-6 bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-full font-label uppercase font-bold text-xs active:opacity-80 transition-all">
+            <button className="hidden md:block py-2 px-6 bg-primary text-on-primary rounded-full font-label uppercase font-bold text-xs active:opacity-80 transition-all">
               Enter Study
             </button>
-            <button className="text-primary hover:text-primary-container transition-colors">
+            <button className="text-primary hover:opacity-70 transition-colors">
               <span className="material-symbols-outlined">notifications</span>
             </button>
           </div>
@@ -255,21 +294,21 @@ export default function Dashboard() {
                     <h3 className="font-body font-semibold text-on-surface text-lg">
                       최근 기록
                     </h3>
-                    <button className="text-primary font-label uppercase text-xs font-bold hover:text-primary-container">
+                    <a href="/history" className="text-primary font-label uppercase text-xs font-bold hover:opacity-70">
                       전체 보기
-                    </button>
+                    </a>
                   </div>
                   <div className="space-y-6">
                     <LogRow
                       icon="login"
-                      iconBg="bg-primary/10 text-primary"
+                      iconBg="bg-primary-fixed text-primary"
                       title="오늘 입실"
                       date={dateLabel}
                       time={formatTime(inLog)}
                     />
                     <LogRow
                       icon="logout"
-                      iconBg="bg-outline-variant/30 text-on-surface-variant"
+                      iconBg="bg-surface-container-highest text-on-surface-variant"
                       title="오늘 퇴실"
                       date={dateLabel}
                       time={formatTime(outLog)}
@@ -297,7 +336,7 @@ export default function Dashboard() {
                             <div
                               className={`w-full rounded-t-sm ${
                                 isActive
-                                  ? "bg-primary shadow-[0_0_15px_rgba(35,66,42,0.2)]"
+                                  ? "bg-primary"
                                   : idx === 6
                                   ? "bg-surface-variant opacity-50"
                                   : "bg-surface-container-highest"
@@ -357,9 +396,9 @@ export default function Dashboard() {
                       {formatTime(inLog)}
                     </h3>
                   </div>
-                  <div className="mt-6 pt-4 border-t border-outline-variant/15 relative z-10">
+                  <div className="mt-6 pt-4 border-t border-outline-variant relative z-10">
                     <p className="font-body text-sm text-on-surface-variant flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px] text-secondary">
+                      <span className="material-symbols-outlined text-base text-secondary">
                         schedule
                       </span>
                       {dateLabel} ({weekday})
@@ -385,9 +424,9 @@ export default function Dashboard() {
                       {formatTime(outLog)}
                     </h3>
                   </div>
-                  <div className="mt-6 pt-4 border-t border-outline-variant/15 relative z-10">
+                  <div className="mt-6 pt-4 border-t border-outline-variant relative z-10">
                     <p className="font-body text-sm text-on-surface-variant flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px] text-primary">
+                      <span className="material-symbols-outlined text-base text-primary">
                         done_all
                       </span>
                       {outLog ? "일일 목표 완료" : "퇴실 기록 없음"}
@@ -396,33 +435,25 @@ export default function Dashboard() {
                 </div>
 
                 {/* Total Study Time */}
-                <div className="bg-gradient-to-br from-primary to-primary-container rounded-xl p-6 shadow-lg text-on-primary flex flex-col justify-between relative overflow-hidden">
-                  <div
-                    className="absolute inset-0 opacity-10 mix-blend-overlay"
-                    style={{
-                      backgroundImage:
-                        "radial-gradient(#ffffff 1px, transparent 1px)",
-                      backgroundSize: "16px 16px",
-                    }}
-                  ></div>
-                  <div className="relative z-10">
+                <div className="bg-primary rounded-xl p-6 shadow-lg text-on-primary flex flex-col justify-between relative overflow-hidden">
+                  <div>
                     <div className="flex justify-between items-start mb-2">
-                      <p className="font-label text-xs uppercase tracking-wider text-on-primary/80 font-bold">
+                      <p className="font-label text-xs uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.8)' }}>
                         총 학습 시간 (Total Time)
                       </p>
-                      <span className="material-symbols-outlined text-on-primary/60">
+                      <span className="material-symbols-outlined" style={{ color: 'rgba(255,255,255,0.6)' }}>
                         hourglass_top
                       </span>
                     </div>
-                    <h3 className="font-headline text-5xl font-semibold mt-2">
+                    <h3 className="font-headline text-5xl font-semibold mt-2 text-on-primary">
                       {duration.h}
                       <span className="text-3xl font-medium">h</span>{" "}
                       {duration.m}
                       <span className="text-3xl font-medium">m</span>
                     </h3>
                   </div>
-                  <div className="mt-8 relative z-10">
-                    <div className="w-full bg-on-primary/20 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div className="mt-8">
+                    <div className="w-full rounded-full h-1.5 mb-2 overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
                       <div
                         className="bg-on-primary h-1.5 rounded-full"
                         style={{
@@ -433,7 +464,7 @@ export default function Dashboard() {
                         }}
                       ></div>
                     </div>
-                    <p className="font-body text-xs text-on-primary/80 text-right">
+                    <p className="font-body text-xs text-right" style={{ color: 'rgba(255,255,255,0.8)' }}>
                       목표 3시간 대비{" "}
                       {Math.min(
                         100,
@@ -448,8 +479,8 @@ export default function Dashboard() {
               </div>
 
               {/* Quote */}
-              <div className="bg-surface-container-low rounded-xl p-8 flex flex-col justify-center border border-outline-variant/10">
-                <span className="material-symbols-outlined text-3xl text-secondary/40 mb-4">
+              <div className="bg-surface-container-low rounded-xl p-8 flex flex-col justify-center border border-outline-variant">
+                <span className="material-symbols-outlined text-3xl text-secondary mb-4" style={{ opacity: 0.4 }}>
                   format_quote
                 </span>
                 <p className="font-headline text-xl text-on-surface italic leading-relaxed">
@@ -572,7 +603,6 @@ function MonthlyAttendance({ selectedDate }: { selectedDate: Date }) {
             {d}
           </div>
         ))}
-        {/* Placeholder days - in production, this would be dynamically generated */}
         {Array.from({ length: 28 }, (_, i) => (
           <div
             key={i}
