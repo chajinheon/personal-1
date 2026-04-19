@@ -5,25 +5,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDate } from "./DateProvider";
 import { useAuth } from "./AuthProvider";
-import { motion } from "motion/react";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { selectedDate, setSelectedDate } = useDate();
   const { user } = useAuth();
-  
-  // Calendar logic
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
 
-  const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const startDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+  );
+
+  const daysInMonth = (year: number, month: number) =>
+    new Date(year, month + 1, 0).getDate();
+  const startDayOfMonth = (year: number, month: number) =>
+    new Date(year, month, 1).getDay();
 
   const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+    );
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+    );
   };
 
   const isToday = (day: number) => {
@@ -43,29 +49,57 @@ export default function Sidebar() {
     );
   };
 
-  const renderDays = () => {
-    const totalDays = daysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
-    const firstDay = startDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth());
-    const days = [];
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
 
-    // Empty spaces for previous month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="py-2"></div>);
+  const renderCalendarDays = () => {
+    const totalDays = daysInMonth(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth()
+    );
+    const firstDay = startDayOfMonth(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth()
+    );
+    const cells = [];
+
+    // Previous month trailing days
+    const prevMonthDays = daysInMonth(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() - 1
+    );
+    for (let i = firstDay - 1; i >= 0; i--) {
+      cells.push(
+        <div key={`prev-${i}`} className="py-1 text-on-surface-variant opacity-40 text-center text-xs">
+          {prevMonthDays - i}
+        </div>
+      );
     }
 
-    // Days of current month
+    // Current month days
     for (let d = 1; d <= totalDays; d++) {
-      const active = isSelected(d);
-      days.push(
+      const selected = isSelected(d);
+      const today = isToday(d);
+      cells.push(
         <div
           key={d}
-          onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d))}
-          className={`py-1.5 text-sm cursor-pointer rounded-full transition-all flex items-center justify-center w-8 h-8 mx-auto ${
-            active 
-              ? "bg-primary text-white font-bold shadow-md shadow-primary/20" 
-              : isToday(d)
-                ? "text-primary font-bold border border-primary/20"
-                : "text-on-surface hover:bg-surface-variant"
+          onClick={() =>
+            setSelectedDate(
+              new Date(
+                currentMonth.getFullYear(),
+                currentMonth.getMonth(),
+                d
+              )
+            )
+          }
+          className={`py-1 text-center text-xs cursor-pointer rounded transition-colors ${
+            selected
+              ? "text-on-primary bg-primary font-bold shadow-md"
+              : today
+              ? "text-primary font-bold"
+              : "text-on-surface hover:bg-surface-variant"
           }`}
         >
           {d}
@@ -73,115 +107,159 @@ export default function Sidebar() {
       );
     }
 
-    return days;
+    return cells;
   };
 
   return (
-    <nav className="hidden md:flex flex-col h-screen w-80 bg-surface-container-low border-r border-outline-variant/15 py-10 z-30">
-      {/* Header */}
-      <div className="px-8 mb-10 flex flex-col items-start">
-        <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 border border-primary/10">
-          <span className="material-symbols-outlined text-2xl text-primary font-bold">account_balance</span>
+    <nav className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-72 rounded-r-2xl bg-surface-container-low p-6 space-y-6 z-50 overflow-y-auto">
+      {/* Brand */}
+      <div>
+        <div className="font-headline font-semibold italic text-xl text-primary mb-8">
+          Evergreen Academy
         </div>
-        <h1 className="font-headline text-2xl text-primary font-bold italic">The Atelier</h1>
-        <p className="font-label text-[10px] tracking-[0.2em] uppercase font-bold text-on-surface-variant mt-1">Spring Session 2024</p>
+
+        {/* Profile */}
+        <div className="flex items-center space-x-4 mb-8">
+          <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant/20">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="material-symbols-outlined text-primary text-2xl">
+                person
+              </span>
+            )}
+          </div>
+          <div>
+            <h2 className="font-headline font-semibold text-lg text-on-surface">
+              {user?.displayName || "Student"}
+            </h2>
+            <p className="text-sm font-label text-on-surface-variant uppercase font-bold">
+              {user?.email?.split("@")[0] || "ID"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex-1 px-4 space-y-1">
-        <NavLink 
-          href="/dashboard" 
-          active={pathname === "/dashboard"} 
-          icon="dashboard" 
-          label="Dashboard" 
+      {/* Nav Links */}
+      <div className="flex-1 space-y-2">
+        <NavItem
+          href="/dashboard"
+          icon="dashboard"
+          label="Overview"
+          active={pathname === "/dashboard"}
         />
-        <NavLink 
-          href="/history" 
-          active={pathname === "/history"} 
-          icon="history" 
-          label="Attendance History" 
+        <NavItem
+          href="/history"
+          icon="history"
+          label="History"
+          active={pathname === "/history"}
         />
-        <NavLink 
-          href="#" 
-          active={false} 
-          icon="menu_book" 
-          label="Study Materials" 
+        <NavItem
+          href="#"
+          icon="campaign"
+          label="Notices"
+          active={false}
         />
-        <NavLink 
-          href="#" 
-          active={false} 
-          icon="self_improvement" 
-          label="Focus Hub" 
+        <NavItem
+          href="#"
+          icon="settings"
+          label="Settings"
+          active={false}
         />
       </div>
 
       {/* Mini Calendar */}
-      <div className="px-6 mb-8 mt-6">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-outline-variant/15">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-body font-bold text-on-surface text-xs uppercase tracking-wider">
-              {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+      <div className="mt-auto space-y-6">
+        <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-body font-semibold text-on-surface text-sm">
+              {monthNames[currentMonth.getMonth()]}{" "}
+              {currentMonth.getFullYear()}
             </h4>
-            <div className="flex space-x-1">
-              <button onClick={handlePrevMonth} className="p-1 hover:bg-surface-variant rounded-full transition-colors">
-                <span className="material-symbols-outlined text-base">chevron_left</span>
+            <div className="flex space-x-1 text-on-surface-variant">
+              <button
+                onClick={handlePrevMonth}
+                className="hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  chevron_left
+                </span>
               </button>
-              <button onClick={handleNextMonth} className="p-1 hover:bg-surface-variant rounded-full transition-colors">
-                <span className="material-symbols-outlined text-base">chevron_right</span>
+              <button
+                onClick={handleNextMonth}
+                className="hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  chevron_right
+                </span>
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-              <div key={day} className="text-[10px] font-bold text-on-surface-variant/50">{day}</div>
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+            {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map((d) => (
+              <div
+                key={d}
+                className="text-[10px] font-label text-on-surface-variant uppercase"
+              >
+                {d}
+              </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {renderDays()}
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-body">
+            {renderCalendarDays()}
           </div>
         </div>
-      </div>
 
-      {/* User / Footer */}
-      <div className="px-6 pt-6 border-t border-outline-variant/15">
-        <div className="flex items-center gap-3 px-4 py-3 bg-white/50 rounded-2xl mb-4 border border-outline-variant/10">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-            ) : (
-              <span className="material-symbols-outlined text-primary text-xl">person</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-on-surface truncate">{user?.displayName || "Student"}</p>
-            <p className="text-[10px] text-on-surface-variant truncate">{user?.email}</p>
-          </div>
+        {/* Help Center */}
+        <div>
+          <a
+            className="flex items-center space-x-3 px-4 py-2 text-on-surface-variant hover:bg-surface-variant hover:translate-x-1 transition-transform duration-200 rounded-xl"
+            href="#"
+          >
+            <span className="material-symbols-outlined">help_outline</span>
+            <span className="font-label uppercase font-bold text-sm">
+              Help Center
+            </span>
+          </a>
         </div>
-        <button 
-          onClick={() => {}} 
-          className="w-full flex items-center gap-3 text-on-surface-variant px-4 py-2 hover:text-primary transition-all text-xs font-bold uppercase tracking-wider"
-        >
-          <span className="material-symbols-outlined text-lg">logout</span>
-          Sign Out
-        </button>
       </div>
     </nav>
   );
 }
 
-function NavLink({ href, active, icon, label }: { href: string; active: boolean; icon: string; label: string }) {
+function NavItem({
+  href,
+  icon,
+  label,
+  active,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  active: boolean;
+}) {
   return (
-    <Link href={href} className="block">
-      <div className={`flex items-center gap-4 px-6 py-3.5 rounded-2xl transition-all duration-300 group ${
-        active 
-          ? "bg-stone-900 text-white shadow-lg shadow-stone-900/10" 
-          : "text-on-surface-variant hover:text-primary hover:bg-primary/5"
-      }`}>
-        <span className={`material-symbols-outlined text-xl ${active ? "fill" : ""}`} style={active ? { fontVariationSettings: "'FILL' 1" } : {}}>
-          {icon}
-        </span>
-        <span className="font-body font-bold text-sm tracking-tight">{label}</span>
-      </div>
+    <Link
+      href={href}
+      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ease-in-out ${
+        active
+          ? "bg-primary text-on-primary shadow-[0_24px_48px_rgba(0,0,0,0.04)]"
+          : "text-on-surface-variant hover:bg-surface-variant hover:translate-x-1 transition-transform duration-200"
+      }`}
+    >
+      <span
+        className="material-symbols-outlined"
+        style={active ? { fontVariationSettings: "'FILL' 1" } : {}}
+      >
+        {icon}
+      </span>
+      <span className="font-label uppercase font-bold text-sm">{label}</span>
     </Link>
   );
 }
