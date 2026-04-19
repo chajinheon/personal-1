@@ -8,6 +8,8 @@ import {
   where,
   onSnapshot,
   Timestamp,
+  getDocs,
+  limit,
 } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { useDate } from "@/components/DateProvider";
@@ -73,7 +75,20 @@ export default function Dashboard() {
     const dd = String(selectedDate.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    console.log("[Dashboard] Fetching logs for:", { studentIdStr, dateStr });
+    console.log("[Dashboard] Auth user:", { uid: user.uid, email: user.email });
+    console.log("[Dashboard] Querying with studentId:", studentIdStr, "date:", dateStr);
+
+    // --- DIAGNOSTIC: fetch first 3 docs to reveal actual field structure ---
+    getDocs(query(collection(db, "attendance_logs"), limit(3))).then((snap) => {
+      if (snap.empty) {
+        console.warn("[DIAG] attendance_logs collection is EMPTY or access denied");
+      } else {
+        snap.docs.forEach((d, i) => {
+          console.log(`[DIAG] Doc[${i}] fields:`, JSON.stringify(d.data()));
+        });
+      }
+    }).catch((e) => console.error("[DIAG] Error:", e.code, e.message));
+    // -----------------------------------------------------------------------
 
     // Query by string studentId only (DB stores as string)
     const q = query(
