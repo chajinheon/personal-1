@@ -55,42 +55,71 @@ export default function Dashboard() {
   // Only calculate this on the client
   const isSelectedToday = mounted ? todayCheck(selectedDate) : false;
 
-  // Get the student ID from email
+  // Get the student ID from student profile (fetched from Firestore)
+  const [studentProfile, setStudentProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user || !mounted) return;
+      try {
+        const studentsRef = collection(db, "students");
+        
+        // 1. Try to find by UID
+        const qUid = query(studentsRef, where("uid", "==", user.uid));
+        const snapUid = await getDocs(qUid);
+        if (!snapUid.empty) {
+          setStudentProfile(snapUid.docs[0].data());
+          return;
+        }
+
+        // 2. Try to find by email
+        if (user.email) {
+          const qEmail = query(studentsRef, where("email", "==", user.email));
+          const snapEmail = await getDocs(qEmail);
+          if (!snapEmail.empty) {
+            setStudentProfile(snapEmail.docs[0].data());
+            return;
+          }
+          
+          // 3. Try to find by email prefix as studentId (fallback)
+          const prefix = user.email.split("@")[0];
+          const qSid = query(studentsRef, where("studentId", "==", prefix));
+          const snapSid = await getDocs(qSid);
+          if (!snapSid.empty) {
+            setStudentProfile(snapSid.docs[0].data());
+            return;
+          }
+        }
+        
+        console.warn("[Dashboard] No student profile found for user:", user.email);
+      } catch (err) {
+        console.error("[Dashboard] Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
+  }, [user, mounted]);
+
   const getStudentId = () => {
+    if (studentProfile?.studentId) return studentProfile.studentId;
     if (!user?.email) return "";
     return user.email.split("@")[0];
   };
 
   // Fetch logs for the selected date
-  // Uses client-side date filtering (computed from timestamp, not a separate date field)
   useEffect(() => {
     if (!user || !mounted) return;
+    const studentIdStr = getStudentId();
+    if (!studentIdStr) return;
+
     setLoading(true);
     
-    const studentIdStr = getStudentId();
-    if (!studentIdStr) { setLoading(false); return; }
-
     const yyyy = selectedDate.getFullYear();
     const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const dd = String(selectedDate.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
-    console.log("[Dashboard] Auth user:", { uid: user.uid, email: user.email });
-    console.log("[Dashboard] Querying with studentId:", studentIdStr, "date:", dateStr);
+    console.log("[Dashboard] Querying logs for studentId:", studentIdStr, "date:", dateStr);
 
-    // --- DIAGNOSTIC: fetch first 3 docs to reveal actual field structure ---
-    getDocs(query(collection(db, "attendance_logs"), limit(3))).then((snap) => {
-      if (snap.empty) {
-        console.warn("[DIAG] attendance_logs collection is EMPTY or access denied");
-      } else {
-        snap.docs.forEach((d, i) => {
-          console.log(`[DIAG] Doc[${i}] fields:`, JSON.stringify(d.data()));
-        });
-      }
-    }).catch((e) => console.error("[DIAG] Error:", e.code, e.message));
-    // -----------------------------------------------------------------------
-
-    // Query by string studentId only (DB stores as string)
     const q = query(
       collection(db, "attendance_logs"),
       where("studentId", "==", studentIdStr)
@@ -99,39 +128,46 @@ export default function Dashboard() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        console.log("[Dashboard] Total docs from Firestore:", snapshot.docs.length);
-        
         const allData = snapshot.docs.map((docSnap) => {
           const data = docSnap.data();
-          // Compute dateStr from timestamp (no separate date field in DB)
+          const docId = docSnap.id;
+          
+          // Determine entryType from field or document ID suffix
+          let entryType = data.entryType;
+          if (!entryType) {
+            if (docId.endsWith("_in")) entryType = "checkin";
+            else if (docId.endsWith("_out")) entryType = "checkout";
+          }
+
           const ts: Timestamp = data.timestamp;
           const dateObj = ts?.toDate ? ts.toDate() : new Date();
           const y = dateObj.getFullYear();
           const mo = String(dateObj.getMonth() + 1).padStart(2, "0");
           const d = String(dateObj.getDate()).padStart(2, "0");
+          
           return {
-            id: docSnap.id,
-            ...(data as Omit<AttendanceLog, "id" | "dateStr">),
+            id: docId,
+            ...(data as any),
+            entryType,
             dateStr: `${y}-${mo}-${d}`,
           };
         });
 
-        // Filter by selected date
-        const data = allData.filter((log) => log.dateStr === dateStr);
-        data.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+        const filtered = allData.filter((log) => log.dateStr === dateStr);
+        filtered.sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
-        console.log("[Dashboard] Filtered daily logs:", data);
-        setLogs(data);
+        console.log("[Dashboard] Daily logs found:", filtered.length);
+        setLogs(filtered);
         setLoading(false);
       },
       (error) => {
-        console.error("[Dashboard] Firestore error (daily logs):", error.code, error.message);
+        console.error("[Dashboard] Firestore error (daily logs):", error);
         setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [user, selectedDate, mounted]);
+  }, [user, mounted, studentProfile, selectedDate]);
 
   // Fetch monthly stats
   useEffect(() => {
