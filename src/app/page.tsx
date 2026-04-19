@@ -100,7 +100,7 @@ export default function Login() {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full max-w-lg mx-4 z-10"
       >
-        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white">
+        <div className="backdrop-blur-xl rounded-[2.5rem] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
           <div className="text-center mb-10">
             <motion.div 
               initial={{ scale: 0.9 }}
