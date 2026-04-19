@@ -40,12 +40,20 @@ export default function Dashboard() {
     avgEntryTime: "18:42",
   });
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const todayCheck = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
   };
 
   const isSelectedToday = todayCheck(selectedDate);
+
+  if (!mounted) return <div className="min-h-screen bg-background" />;
 
   // Get the student ID from email
   const getStudentId = () => {
@@ -60,7 +68,12 @@ export default function Dashboard() {
     
     const studentIdStr = getStudentId();
     const studentIdNum = parseInt(studentIdStr);
-    const dateStr = selectedDate.toISOString().split("T")[0];
+    
+    // Fix: Use local date string instead of toISOString (UTC)
+    const yyyy = selectedDate.getFullYear();
+    const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
+    const dd = String(selectedDate.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
 
     console.log("Fetching logs for:", { studentIdStr, studentIdNum, dateStr });
 
@@ -199,6 +212,8 @@ export default function Dashboard() {
   const weekday = selectedDate.toLocaleDateString("ko-KR", {
     weekday: "long",
   });
+
+  if (!mounted) return <div className="min-h-screen bg-background" />;
 
   return (
     <div className="flex min-h-screen bg-background text-on-surface">

@@ -28,6 +28,11 @@ export default function History() {
   const [logs, setLogs] = useState<GroupedLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("전체");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getStudentId = () => {
     if (!user?.email) return "";
@@ -109,6 +114,8 @@ export default function History() {
       return "--:--";
     }
   };
+
+  if (!mounted) return <div className="min-h-screen bg-background" />;
 
   return (
     <div className="flex min-h-screen bg-background text-on-surface">

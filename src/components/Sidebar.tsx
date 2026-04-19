@@ -10,10 +10,16 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { selectedDate, setSelectedDate } = useDate();
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
-  const [currentMonth, setCurrentMonth] = useState(
-    new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
-  );
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  React.useEffect(() => {
+    setMounted(true);
+    setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  }, [selectedDate]);
+
+  if (!mounted) return null;
 
   const daysInMonth = (year: number, month: number) =>
     new Date(year, month + 1, 0).getDate();
