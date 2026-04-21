@@ -255,58 +255,37 @@ export default function OverviewPage() {
           </div>
 
           <div className="space-y-6 flex flex-col justify-between">
-            {/* D-Day Card */}
-            <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 relative overflow-hidden shadow-[0_24px_48px_rgba(27,28,25,0.03)]">
-              <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none"></div>
-              <div className="flex items-start justify-between relative z-10">
-                <div>
-                  <h3 className="font-label font-bold uppercase tracking-widest text-on-surface-variant text-xs mb-1">2학기 기말고사</h3>
-                  <div className="font-headline text-5xl md:text-6xl text-primary font-semibold tracking-tight mt-1 mb-2">D-34</div>
-                  <div className="text-sm font-body font-semibold text-on-surface-variant flex items-center gap-1.5">
-                    <span className="text-[16px] -mt-0.5">☘️</span>
-                    오늘도 묵묵히 걸어가는 당신을 응원합니다
-                  </div>
-                </div>
+            <div className="bg-surface-container-lowest rounded-xl p-6 relative">
+              <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
+              <div className="flex items-center space-x-3 mb-4">
+                <span className="material-symbols-outlined text-on-surface-variant text-xl">calendar_today</span>
+                <h3 className="font-body font-semibold text-on-surface-variant text-sm">이번 달 총 참여</h3>
               </div>
-            </div>
-
-            <div className="bg-surface-container-lowest rounded-xl p-6 relative overflow-hidden shadow-[0_24px_48px_rgba(27,28,25,0.03)] border border-outline-variant/20">
-              <div className="absolute -right-4 -top-4 opacity-[0.03] transform rotate-12 pointer-events-none">
-                <span className="material-symbols-outlined text-[100px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-              </div>
-              <div className="relative z-10">
-                <h3 className="font-label font-bold uppercase tracking-widest text-on-surface-variant text-xs mb-1">연속 학습</h3>
-                <div className="font-headline text-6xl font-bold tracking-tight mb-2 text-primary">{stats.streak}일</div>
-                <div className="text-sm font-body font-semibold text-on-surface-variant flex items-center gap-1.5 mt-3">
-                  <span className="text-[16px] -mt-0.5">☘️</span>
-                  운영일 기준으로 연속 학습을 계산합니다.
-                </div>
+              <div className="font-headline text-4xl text-on-surface flex items-baseline gap-1">
+                {stats.monthlyAttendanceCount} <span className="text-xl text-on-surface-variant">회</span>
               </div>
             </div>
 
             <div className="bg-surface-container-lowest rounded-xl p-6 relative">
               <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="material-symbols-outlined text-primary text-xl">event_available</span>
-                <h3 className="font-body font-semibold text-on-surface-variant text-sm">이번 달 출석률</h3>
-              </div>
-              <div className="font-headline text-3xl text-on-surface">{formatPercentLabel(stats.monthlyAttendanceRate.rate)}</div>
-            </div>
-            <div className="bg-surface-container-lowest rounded-xl p-6 relative">
-              <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="material-symbols-outlined text-primary text-xl">timer</span>
+              <div className="flex items-center space-x-3 mb-4">
+                <span className="material-symbols-outlined text-on-surface-variant text-xl">timer</span>
                 <h3 className="font-body font-semibold text-on-surface-variant text-sm">누적 학습 시간</h3>
               </div>
-              <div className="font-headline text-3xl text-on-surface">{formatMinutesLabel(stats.totalStudyMinutes)}</div>
+              <div className="font-headline text-4xl text-on-surface flex items-baseline gap-1">
+                {Math.floor(stats.totalStudyMinutes / 60)} <span className="text-xl text-on-surface-variant">시간</span> {stats.totalStudyMinutes % 60} <span className="text-xl text-on-surface-variant">분</span>
+              </div>
             </div>
+
             <div className="bg-surface-container-lowest rounded-xl p-6 relative">
               <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-2">
-                <span className="material-symbols-outlined text-primary text-xl">schedule</span>
-                <h3 className="font-body font-semibold text-on-surface-variant text-sm">일일 평균 학습</h3>
+              <div className="flex items-center space-x-3 mb-4">
+                <span className="material-symbols-outlined text-on-surface-variant text-xl">schedule</span>
+                <h3 className="font-body font-semibold text-on-surface-variant text-sm">평균 입실 시간</h3>
               </div>
-              <div className="font-headline text-3xl text-on-surface">{formatMinutesLabel(stats.averageDailyStudy.averageMinutes)}</div>
+              <div className="font-headline text-4xl text-on-surface">
+                {stats.averageEntryTime}
+              </div>
             </div>
           </div>
         </div>
