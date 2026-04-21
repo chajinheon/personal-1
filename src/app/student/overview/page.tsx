@@ -255,6 +255,21 @@ export default function OverviewPage() {
           </div>
 
           <div className="space-y-6 flex flex-col justify-between">
+            {/* D-Day Card */}
+            <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-6 relative overflow-hidden shadow-[0_24px_48px_rgba(27,28,25,0.03)]">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+              <div className="flex items-start justify-between relative z-10">
+                <div>
+                  <h3 className="font-label font-bold uppercase tracking-widest text-on-surface-variant text-xs mb-1">2학기 기말고사</h3>
+                  <div className="font-headline text-5xl md:text-6xl text-primary font-semibold tracking-tight mt-1 mb-2">D-34</div>
+                  <div className="text-sm font-body font-semibold text-on-surface-variant flex items-center gap-1.5">
+                    <span className="text-[16px] -mt-0.5">☘️</span>
+                    오늘도 묵묵히 걸어가는 당신을 응원합니다
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-surface-container-lowest rounded-xl p-6 relative overflow-hidden shadow-[0_24px_48px_rgba(27,28,25,0.03)] border border-outline-variant/20">
               <div className="absolute -right-4 -top-4 opacity-[0.03] transform rotate-12 pointer-events-none">
                 <span className="material-symbols-outlined text-[100px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
