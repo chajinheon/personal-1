@@ -3,18 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import StudentAccessPanel from "@/components/StudentAccessPanel";
-import { useAuth } from "@/components/AuthProvider";
 import { useDate } from "@/components/DateProvider";
-import { useResolvedStudentId } from "@/hooks/useResolvedStudentId";
-import { useStudentAttendance } from "@/hooks/useStudentAttendance";
+import { useAttendanceStatistics } from "@/hooks/useAttendanceStatistics";
+import { useCurrentStudentAttendance } from "@/hooks/useCurrentStudentAttendance";
+import { useNow } from "@/hooks/useNow";
 import {
   formatDateKey,
-  formatMinutesLabel,
   getLogTimestamp,
-  getSessionCompletedMinutes,
   getSessionDurationDisplay,
   getSessionStatus,
 } from "@/lib/attendance";
+import {
+  formatMinutesLabel,
+  formatPercentLabel,
+} from "@/lib/attendance-statistics";
 
 function formatTime(date: Date | null): string {
   if (!date) return "--:--";
@@ -35,85 +37,59 @@ function formatDateLabel(date: Date): string {
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
   const { selectedDate } = useDate();
   const [mounted, setMounted] = useState(false);
+  const now = useNow();
 
   const {
+    user,
+    authLoading,
     studentId,
     source,
     manualStudentId,
     setManualStudentId,
     saveManualStudentId,
     clearManualStudentId,
-  } = useResolvedStudentId(user?.email);
-  const activeStudentId = authLoading ? "" : studentId;
-  const { studentProfile, sessions, loading, error } = useStudentAttendance(activeStudentId);
+    activeStudentId,
+    studentProfile,
+    sessions,
+    loading,
+    error,
+  } = useCurrentStudentAttendance();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const { stats, loading: statsLoading, error: statsError } = useAttendanceStatistics({
+    enabled: Boolean(activeStudentId),
+    studentSessions: sessions,
+    referenceDate: selectedDate,
+    now,
+  });
+
   const selectedDateKey = useMemo(
     () => formatDateKey(selectedDate),
     [selectedDate]
   );
-  const todayKey = useMemo(() => formatDateKey(new Date()), []);
+  const todayKey = useMemo(() => formatDateKey(now), [now]);
 
   const selectedSession = useMemo(
     () => sessions.find((session) => session.date === selectedDateKey) ?? null,
     [selectedDateKey, sessions]
   );
 
-  const monthlySessions = useMemo(() => {
-    const monthPrefix = `${selectedDate.getFullYear()}-${String(
-      selectedDate.getMonth() + 1
-    ).padStart(2, "0")}`;
-
-    return sessions.filter((session) => session.date.startsWith(monthPrefix));
-  }, [selectedDate, sessions]);
-
-  const monthlyStudyMinutes = useMemo(
-    () =>
-      monthlySessions.reduce(
-        (total, session) => total + getSessionCompletedMinutes(session),
-        0
-      ),
-    [monthlySessions]
-  );
-
-  const monthlyEntryCount = useMemo(
-    () => monthlySessions.filter((session) => session.checkin).length,
-    [monthlySessions]
-  );
-
-  const averageEntryTime = useMemo(() => {
-    const checkinTimes = monthlySessions
-      .map((session) => getLogTimestamp(session.checkin))
-      .filter((value): value is Date => value instanceof Date);
-
-    if (checkinTimes.length === 0) return "--:--";
-
-    const averageMinutes = Math.round(
-      checkinTimes.reduce(
-        (total, date) => total + date.getHours() * 60 + date.getMinutes(),
-        0
-      ) / checkinTimes.length
-    );
-
-    return `${String(Math.floor(averageMinutes / 60)).padStart(2, "0")}:${String(
-      averageMinutes % 60
-    ).padStart(2, "0")}`;
-  }, [monthlySessions]);
-
   const statusText = useMemo(() => {
     if (!selectedSession?.checkin) return "기록 없음";
 
-    const status = getSessionStatus(selectedSession, new Date());
+    const status = getSessionStatus(selectedSession, now);
     if (status === "completed") return "학습 종료";
     if (status === "missing_checkout") return "미퇴실";
     return "학습 중";
-  }, [selectedSession]);
+  }, [now, selectedSession]);
+
+  const combinedError = error || statsError;
+  const isLoading = loading || statsLoading;
 
   const needsStudentAccessPanel =
     mounted && (source !== "email" || !studentProfile);
@@ -170,9 +146,9 @@ export default function DashboardPage() {
             />
           )}
 
-          {error && (
+          {combinedError && (
             <section className="rounded-2xl border border-error/15 bg-error-container p-4 text-sm font-semibold text-on-surface">
-              {error}
+              {combinedError}
             </section>
           )}
 
@@ -185,7 +161,7 @@ export default function DashboardPage() {
                 {formatDateLabel(selectedDate)}
               </h2>
 
-              {loading ? (
+              {isLoading ? (
                 <div className="mt-10 flex items-center gap-3 text-on-surface-variant">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                   <span className="font-semibold">출석 데이터를 불러오는 중입니다.</span>
@@ -223,7 +199,7 @@ export default function DashboardPage() {
                     </p>
                     <p className="mt-2 font-headline text-5xl font-semibold text-primary">
                       {selectedSession
-                        ? getSessionDurationDisplay(selectedSession, new Date())
+                        ? getSessionDurationDisplay(selectedSession, now)
                         : "0분"}
                     </p>
                   </div>
@@ -238,15 +214,15 @@ export default function DashboardPage() {
 
             <aside className="grid gap-4">
               <MetricCard
-                label="이번 달 출석일"
-                value={`${monthlyEntryCount}일`}
+                label="이번 달 출석률"
+                value={formatPercentLabel(stats.monthlyAttendanceRate.rate)}
                 accent="primary"
               />
               <MetricCard
-                label="이번 달 누적 학습"
-                value={formatMinutesLabel(monthlyStudyMinutes)}
+                label="일일 평균 학습"
+                value={formatMinutesLabel(stats.averageDailyStudy.averageMinutes)}
               />
-              <MetricCard label="평균 입실 시각" value={averageEntryTime} />
+              <MetricCard label="연속 학습" value={`${stats.streak}일`} />
             </aside>
           </section>
 
@@ -286,7 +262,7 @@ export default function DashboardPage() {
                         {session.date}
                       </td>
                       <td className="px-4 py-4">
-                        <StatusBadge status={getSessionStatus(session, new Date())} />
+                        <StatusBadge status={getSessionStatus(session, now)} />
                       </td>
                       <td className="px-4 py-4 text-on-surface-variant">
                         {formatTime(getLogTimestamp(session.checkin))}
@@ -297,11 +273,11 @@ export default function DashboardPage() {
                         )}
                       </td>
                       <td className="rounded-r-2xl px-4 py-4 font-semibold text-primary">
-                        {getSessionDurationDisplay(session, new Date())}
+                        {getSessionDurationDisplay(session, now)}
                       </td>
                     </tr>
                   ))}
-                  {!loading && sessions.length === 0 && (
+                  {!isLoading && sessions.length === 0 && (
                     <tr>
                       <td
                         colSpan={5}

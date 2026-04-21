@@ -3,16 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import StudentAccessPanel from "@/components/StudentAccessPanel";
-import { useAuth } from "@/components/AuthProvider";
-import { useResolvedStudentId } from "@/hooks/useResolvedStudentId";
-import { useStudentAttendance } from "@/hooks/useStudentAttendance";
+import { useAttendanceStatistics } from "@/hooks/useAttendanceStatistics";
+import { useCurrentStudentAttendance } from "@/hooks/useCurrentStudentAttendance";
+import { useNow } from "@/hooks/useNow";
 import {
-  formatMinutesLabel,
   getLogTimestamp,
-  getSessionCompletedMinutes,
   getSessionDurationDisplay,
   getSessionStatus,
 } from "@/lib/attendance";
+import {
+  formatMinutesLabel,
+  formatPercentLabel,
+} from "@/lib/attendance-statistics";
 
 type FilterStatus = "전체" | "완료" | "진행 중" | "미퇴실";
 
@@ -32,41 +34,47 @@ function statusLabel(status: ReturnType<typeof getSessionStatus>): FilterStatus 
 }
 
 export default function HistoryPage() {
-  const { user, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("전체");
+  const now = useNow();
 
   const {
+    user,
+    authLoading,
     studentId,
     source,
     manualStudentId,
     setManualStudentId,
     saveManualStudentId,
     clearManualStudentId,
-  } = useResolvedStudentId(user?.email);
-  const activeStudentId = authLoading ? "" : studentId;
-  const { studentProfile, sessions, loading, error } = useStudentAttendance(activeStudentId);
+    activeStudentId,
+    studentProfile,
+    sessions,
+    loading,
+    error,
+  } = useCurrentStudentAttendance();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const totalCompletedMinutes = useMemo(
-    () =>
-      sessions.reduce(
-        (total, session) => total + getSessionCompletedMinutes(session),
-        0
-      ),
-    [sessions]
-  );
+  const { stats, loading: statsLoading, error: statsError } = useAttendanceStatistics({
+    enabled: Boolean(activeStudentId),
+    studentSessions: sessions,
+    referenceDate: now,
+    now,
+  });
 
   const filteredSessions = useMemo(() => {
     if (filterStatus === "전체") return sessions;
 
     return sessions.filter(
-      (session) => statusLabel(getSessionStatus(session, new Date())) === filterStatus
+      (session) => statusLabel(getSessionStatus(session, now)) === filterStatus
     );
-  }, [filterStatus, sessions]);
+  }, [filterStatus, now, sessions]);
+
+  const isLoading = loading || statsLoading;
+  const combinedError = error || statsError;
 
   const needsStudentAccessPanel =
     mounted && (source !== "email" || !studentProfile);
@@ -124,32 +132,24 @@ export default function HistoryPage() {
           )}
 
           <section className="grid gap-4 md:grid-cols-3">
-            <SummaryCard label="총 기록 일수" value={`${sessions.length}일`} />
+            <SummaryCard
+              label="이번 달 출석률"
+              value={formatPercentLabel(stats.monthlyAttendanceRate.rate)}
+            />
             <SummaryCard
               label="누적 학습 시간"
-              value={formatMinutesLabel(totalCompletedMinutes)}
+              value={formatMinutesLabel(stats.totalStudyMinutes)}
               accent="primary"
             />
             <SummaryCard
-              label="완료 비율"
-              value={
-                sessions.length > 0
-                  ? `${Math.round(
-                      (sessions.filter(
-                        (session) =>
-                          getSessionStatus(session, new Date()) === "completed"
-                      ).length /
-                        sessions.length) *
-                        100
-                    )}%`
-                  : "0%"
-              }
+              label="연속 학습"
+              value={`${stats.streak}일`}
             />
           </section>
 
-          {error && (
+          {combinedError && (
             <section className="rounded-2xl border border-error/15 bg-error-container p-4 text-sm font-semibold text-on-surface">
-              {error}
+              {combinedError}
             </section>
           )}
 
@@ -200,7 +200,7 @@ export default function HistoryPage() {
                 </thead>
                 <tbody>
                   {filteredSessions.map((session) => {
-                    const status = getSessionStatus(session, new Date());
+                    const status = getSessionStatus(session, now);
                     return (
                       <tr
                         key={session.key}
@@ -227,7 +227,7 @@ export default function HistoryPage() {
                     );
                   })}
 
-                  {!loading && filteredSessions.length === 0 && (
+                  {!isLoading && filteredSessions.length === 0 && (
                     <tr>
                       <td
                         colSpan={5}
