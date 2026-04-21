@@ -13,8 +13,6 @@ import {
   getSessionStatus,
 } from "@/lib/attendance";
 import {
-  formatMinutesLabel,
-  formatPercentLabel,
   formatTimeLabel,
 } from "@/lib/attendance-statistics";
 
@@ -25,7 +23,6 @@ function parseDateKey(dateKey: string): Date {
 
 function formatEventDate(dateKey: string): string {
   return parseDateKey(dateKey).toLocaleDateString("ko-KR", {
-    year: "numeric",
     month: "long",
     day: "numeric",
   });
@@ -36,12 +33,12 @@ function getHeroTimerParts(
   now: Date
 ) {
   if (!session?.checkin) {
-    return { main: "00:00", seconds: ":00" };
+    return { hours: "0", minutes: "00", totalMinutes: 0 };
   }
 
   const checkinTime = getLogTimestamp(session.checkin);
   if (!checkinTime) {
-    return { main: "00:00", seconds: ":00" };
+    return { hours: "0", minutes: "00", totalMinutes: 0 };
   }
 
   const exitTime = getLogTimestamp(getSessionExitLog(session));
@@ -55,11 +52,11 @@ function getHeroTimerParts(
   );
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
 
   return {
-    main: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`,
-    seconds: `:${String(seconds).padStart(2, "0")}`,
+    hours: String(hours),
+    minutes: String(minutes).padStart(2, "0"),
+    totalMinutes: Math.floor(totalSeconds / 60)
   };
 }
 
@@ -91,97 +88,38 @@ export default function OverviewPage() {
   );
 
   const heroTimer = useMemo(() => getHeroTimerParts(todaySession, now), [now, todaySession]);
+  
+  const entryTimeLabel = useMemo(() => {
+    if (!todaySession?.checkin) return "--:--";
+    const t = getLogTimestamp(todaySession.checkin);
+    return t ? formatTimeLabel(t).replace(/(AM|PM)/, "") : "--:--";
+  }, [todaySession]);
 
-  const heroTitle = useMemo(() => {
-    if (!todaySession?.checkin) return "오늘 입실 전";
+  const entryPeriod = useMemo(() => {
+    if (!todaySession?.checkin) return "";
+    const t = getLogTimestamp(todaySession.checkin);
+    return t ? (t.getHours() >= 12 ? "PM" : "AM") : "";
+  }, [todaySession]);
 
-    const status = getSessionStatus(todaySession, now);
-    if (status === "completed") return "오늘 학습 종료";
-    if (status === "missing_checkout") return "미퇴실 기록";
-    return "현재 입실 중";
-  }, [now, todaySession]);
+  const exitTimeLabel = useMemo(() => {
+    const exitLog = getSessionExitLog(todaySession);
+    if (!exitLog) return "--:--";
+    const t = getLogTimestamp(exitLog);
+    return t ? formatTimeLabel(t).replace(/(AM|PM)/, "") : "--:--";
+  }, [todaySession]);
 
-  const heroBadge = useMemo(() => {
-    if (!todaySession?.checkin) {
-      return {
-        label: "대기 중",
-        className:
-          "bg-surface-container-high text-on-surface-variant px-3 py-1.5 md:px-4 md:py-2 rounded-full font-label font-bold text-[10px] md:text-xs uppercase flex items-center space-x-1",
-        dotClassName: "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-on-surface-variant",
-      };
-    }
+  const exitPeriod = useMemo(() => {
+    const exitLog = getSessionExitLog(todaySession);
+    if (!exitLog) return "";
+    const t = getLogTimestamp(exitLog);
+    return t ? (t.getHours() >= 12 ? "PM" : "AM") : "";
+  }, [todaySession]);
 
-    const status = getSessionStatus(todaySession, now);
-    if (status === "completed") {
-      return {
-        label: "학습 종료",
-        className:
-          "bg-primary/10 text-primary px-3 py-1.5 md:px-4 md:py-2 rounded-full font-label font-bold text-[10px] md:text-xs uppercase flex items-center space-x-1",
-        dotClassName: "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-primary",
-      };
-    }
-
-    if (status === "missing_checkout") {
-      return {
-        label: "미퇴실",
-        className:
-          "bg-secondary-container text-on-secondary-container px-3 py-1.5 md:px-4 md:py-2 rounded-full font-label font-bold text-[10px] md:text-xs uppercase flex items-center space-x-1",
-        dotClassName: "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-secondary",
-      };
-    }
-
-    return {
-      label: "학습 진행 중",
-      className:
-        "bg-secondary-container text-on-secondary-container px-3 py-1.5 md:px-4 md:py-2 rounded-full font-label font-bold text-[10px] md:text-xs uppercase flex items-center space-x-1",
-      dotClassName: "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-primary animate-pulse",
-    };
-  }, [now, todaySession]);
-
-  const recentEvents = useMemo(() => {
-    return sessions
-      .flatMap((session) => {
-        const items = [];
-        const checkinTime = getLogTimestamp(session.checkin);
-        const exitLog = getSessionExitLog(session);
-        const exitTime = getLogTimestamp(exitLog);
-
-        if (checkinTime) {
-          items.push({
-            key: `${session.key}-checkin`,
-            icon: "login",
-            iconClassName: "bg-primary/10 text-primary",
-            title: session.date === todayKey ? "오늘 입실" : "입실",
-            dateLabel: formatEventDate(session.date),
-            timeLabel: formatTimeLabel(checkinTime),
-            sortKey: checkinTime.getTime(),
-          });
-        }
-
-        if (exitTime) {
-          items.push({
-            key: `${session.key}-checkout`,
-            icon: exitLog?.autoCheckout ? "logout" : "logout",
-            iconClassName: exitLog?.autoCheckout
-              ? "bg-outline-variant/30 text-on-surface-variant"
-              : "bg-outline-variant/30 text-on-surface-variant",
-            title: exitLog?.autoCheckout ? "자동 퇴실" : "퇴실",
-            dateLabel: formatEventDate(session.date),
-            timeLabel: formatTimeLabel(exitTime),
-            sortKey: exitTime.getTime(),
-          });
-        }
-
-        return items;
-      })
-      .sort((left, right) => right.sortKey - left.sortKey)
-      .slice(0, 3);
-  }, [sessions, todayKey]);
-
-  const weeklyMaxMinutes = useMemo(
-    () => Math.max(...stats.weeklyStudySeries.map((point) => point.minutes), 1),
-    [stats.weeklyStudySeries]
-  );
+  const progressPercent = useMemo(() => {
+    // Assuming a 4-hour goal (240 minutes) for demonstration
+    const goal = 240;
+    return Math.min(Math.round((heroTimer.totalMinutes / goal) * 100), 100);
+  }, [heroTimer.totalMinutes]);
 
   if (!mounted || authLoading) {
     return (
@@ -192,155 +130,147 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
-      <header className="flex justify-between items-center w-full px-8 py-4 max-w-screen-2xl mx-auto bg-surface-container-low md:bg-transparent">
-        <div className="md:hidden font-headline font-semibold italic text-xl text-primary">Evergreen Academy</div>
-        <div className="hidden md:flex space-x-6">
-          <span className="text-primary font-bold border-b-2 border-primary pb-1 text-sm uppercase font-label">Overview</span>
-          <Link href="/student/history" className="text-on-surface-variant font-medium hover:text-primary transition-colors pb-1 text-sm uppercase font-label cursor-pointer">History</Link>
-        </div>
-        <div className="flex items-center space-x-4">
-          <button className="hidden md:block py-2 px-6 bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-full font-label uppercase font-bold text-xs scale-95 active:opacity-80 transition-all">
-            Enter Study
+    <div className="flex-1 flex flex-col h-full bg-background relative z-10">
+      {/* TopAppBar */}
+      <header className="flex justify-between items-center w-full px-8 py-4 bg-background z-30 sticky top-0 md:bg-transparent">
+        <div className="flex items-center gap-4">
+          <button className="md:hidden text-primary p-2 -ml-2 rounded-full hover:bg-surface-container-highest transition-colors">
+            <span className="material-symbols-outlined">menu</span>
           </button>
-          <button className="text-primary hover:text-primary-container transition-colors">
+          <h1 className="font-headline text-2xl italic font-semibold text-primary md:hidden">Evergreen Academy</h1>
+          <div className="hidden md:flex items-center bg-surface-container-low rounded-full px-4 py-2 hover:bg-surface-container-high transition-colors cursor-text min-w-[300px]">
+            <span className="material-symbols-outlined text-on-surface-variant text-[20px] mr-2">search</span>
+            <span className="font-body text-sm text-outline">Search records...</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <button className="p-2 text-primary rounded-full hover:bg-surface-container-highest transition-colors scale-95 active:duration-150">
             <span className="material-symbols-outlined">notifications</span>
           </button>
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-container-highest md:hidden">
-            <span className="material-symbols-outlined text-primary text-sm">person</span>
+          <button className="p-2 text-primary rounded-full hover:bg-surface-container-highest transition-colors scale-95 active:duration-150">
+            <span className="material-symbols-outlined">settings</span>
+          </button>
+          <div className="w-9 h-9 rounded-full overflow-hidden ml-2 border border-surface-container-highest shadow-[0_4px_12px_rgba(27,28,25,0.04)] cursor-pointer bg-surface-container-highest flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary">person</span>
           </div>
         </div>
       </header>
 
-      <div className="p-5 md:p-8 max-w-screen-2xl mx-auto w-full space-y-8 md:space-y-12">
-        <div>
-          <div className="font-headline text-3xl md:text-4xl text-on-surface mb-2">야간 자율 학습 현황</div>
-          <p className="text-on-surface-variant font-body">오늘도 목표를 향해 정진하세요.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 bg-surface-container-lowest rounded-xl p-8 relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.05)] pointer-events-none rounded-xl"></div>
+      {/* Canvas */}
+      <div className="flex-1 overflow-y-auto px-6 py-8 md:px-12 md:py-10">
+        <div className="max-w-5xl mx-auto">
+          {/* Page Header */}
+          <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/15 pb-6">
             <div>
-              <div className="flex justify-between items-start mb-8 relative z-10">
-                <div>
-                  <h3 className="font-body font-semibold text-on-surface-variant text-sm uppercase mb-1">현재 상태</h3>
-                  <div className="font-headline text-4xl md:text-5xl text-primary font-semibold">{heroTitle}</div>
-                </div>
-                <div className={heroBadge.className}>
-                  <span className={heroBadge.dotClassName}></span>
-                  <span>{heroBadge.label}</span>
-                </div>
+              <p className="font-label text-sm uppercase tracking-widest text-primary mb-2 font-bold">일일 기록</p>
+              <h2 className="font-headline text-4xl md:text-5xl font-semibold text-on-surface leading-tight">{formatEventDate(todayKey)} 학습 요약</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="bg-surface-container-highest text-primary px-4 py-2 rounded-full font-label text-sm font-bold hover:bg-surface-variant transition-colors flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">download</span>
+                보고서 다운로드
+              </button>
+            </div>
+          </div>
+
+          {/* Main Bento Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Entry Time Card */}
+            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_-12px_rgba(27,28,25,0.06)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span className="material-symbols-outlined text-6xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>login</span>
               </div>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-4 font-bold relative z-10">입실 시간 (Entry Time)</p>
+              <div className="flex items-baseline gap-2 relative z-10">
+                <h3 className="font-headline text-5xl font-medium text-primary">{entryTimeLabel}</h3>
+                <span className="font-body text-sm text-outline font-medium">{entryPeriod}</span>
+              </div>
+              <div className="mt-6 pt-4 border-t border-outline-variant/15 relative z-10">
+                <p className="font-body text-sm text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">schedule</span>
+                  {todaySession?.checkin ? "정상 입실 처리됨" : "입실 기록 대기 중"}
+                </p>
+              </div>
+            </div>
+
+            {/* Exit Time Card */}
+            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_-12px_rgba(27,28,25,0.06)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span className="material-symbols-outlined text-6xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>logout</span>
+              </div>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-4 font-bold relative z-10">퇴실 시간 (Exit Time)</p>
+              <div className="flex items-baseline gap-2 relative z-10">
+                <h3 className="font-headline text-5xl font-medium text-secondary">{exitTimeLabel}</h3>
+                <span className="font-body text-sm text-outline font-medium">{exitPeriod}</span>
+              </div>
+              <div className="mt-6 pt-4 border-t border-outline-variant/15 relative z-10">
+                <p className="font-body text-sm text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-primary">done_all</span>
+                  {getSessionExitLog(todaySession) ? "퇴실 완료" : "학습 진행 중"}
+                </p>
+              </div>
+            </div>
+
+            {/* Total Study Time Card */}
+            <div className="bg-gradient-to-br from-primary to-primary-container rounded-xl p-6 shadow-[0_12px_32px_-12px_rgba(35,66,42,0.3)] text-on-primary flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute inset-0 opacity-10 mix-blend-overlay" style={{ backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)", backgroundSize: "16px 16px" }}></div>
               <div className="relative z-10">
-                <div className="font-body text-on-surface-variant text-sm mb-2">현재 세션 시간</div>
-                <div className="font-headline text-5xl md:text-6xl text-on-surface">
-                  {heroTimer.main}
-                  <span className="text-2xl md:text-3xl text-on-surface-variant">{heroTimer.seconds}</span>
+                <div className="flex justify-between items-start mb-2">
+                  <p className="font-label text-xs uppercase tracking-wider text-on-primary/80 font-bold">총 학습 시간 (Total Time)</p>
+                  <span className="material-symbols-outlined text-on-primary/60">hourglass_top</span>
+                </div>
+                <h3 className="font-headline text-5xl font-semibold mt-2">
+                  {heroTimer.hours}<span className="text-3xl font-medium">h</span> {heroTimer.minutes}<span className="text-3xl font-medium">m</span>
+                </h3>
+              </div>
+              <div className="mt-8 relative z-10">
+                <div className="w-full bg-on-primary/20 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div className="bg-on-primary h-1.5 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                </div>
+                <p className="font-body text-xs text-on-primary/80 text-right">일일 목표의 {progressPercent}% 달성</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Content Area */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Quote section */}
+            <div className="bg-surface-container-low rounded-xl p-8 flex flex-col justify-center border border-outline-variant/10">
+              <span className="material-symbols-outlined text-3xl text-secondary/40 mb-4" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
+              <p className="font-headline text-xl text-on-surface italic leading-relaxed">
+                "{quote?.text}"
+              </p>
+              <p className="font-label text-xs uppercase tracking-widest text-primary mt-6 font-bold">{quote?.author || "지도교사 코멘트"}</p>
+            </div>
+
+            {/* Monthly Stats Summary */}
+            <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0_8px_24px_-12px_rgba(27,28,25,0.06)] flex flex-col justify-between">
+              <div>
+                <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-4 font-bold">이번 달 참여 현황</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-3xl font-headline text-on-surface">{stats.monthlyAttendanceCount} 회</div>
+                    <div className="text-xs font-body text-on-surface-variant">출석 횟수</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-headline text-primary">{Math.floor(stats.totalStudyMinutes / 60)}h</div>
+                    <div className="text-xs font-body text-on-surface-variant">총 학습 시간</div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="relative z-10 mt-6 md:mt-8 pt-6 border-t border-outline-variant/20 flex items-start gap-4">
-              <span className="material-symbols-outlined text-3xl md:text-4xl text-primary/40 mt-1" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
-              <div className="flex-1">
-                <p className="font-headline text-xl md:text-2xl text-on-surface italic leading-relaxed mb-3">
-                  "{quote?.text}"
-                </p>
-                <p className="font-label text-sm uppercase tracking-widest text-on-surface-variant font-bold text-right">
-                  - {quote?.author}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6 flex flex-col justify-between">
-            <div className="bg-surface-container-lowest rounded-xl p-6 relative">
-              <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-4">
-                <span className="material-symbols-outlined text-on-surface-variant text-xl">calendar_today</span>
-                <h3 className="font-body font-semibold text-on-surface-variant text-sm">이번 달 총 참여</h3>
-              </div>
-              <div className="font-headline text-4xl text-on-surface flex items-baseline gap-1">
-                {stats.monthlyAttendanceCount} <span className="text-xl text-on-surface-variant">회</span>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-lowest rounded-xl p-6 relative">
-              <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-4">
-                <span className="material-symbols-outlined text-on-surface-variant text-xl">timer</span>
-                <h3 className="font-body font-semibold text-on-surface-variant text-sm">누적 학습 시간</h3>
-              </div>
-              <div className="font-headline text-4xl text-on-surface flex items-baseline gap-1">
-                {Math.floor(stats.totalStudyMinutes / 60)} <span className="text-xl text-on-surface-variant">시간</span> {stats.totalStudyMinutes % 60} <span className="text-xl text-on-surface-variant">분</span>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-lowest rounded-xl p-6 relative">
-              <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-              <div className="flex items-center space-x-3 mb-4">
-                <span className="material-symbols-outlined text-on-surface-variant text-xl">schedule</span>
-                <h3 className="font-body font-semibold text-on-surface-variant text-sm">평균 입실 시간</h3>
-              </div>
-              <div className="font-headline text-4xl text-on-surface">
-                {stats.averageEntryTime}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-surface-container-lowest rounded-xl p-8 relative">
-            <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-body font-semibold text-on-surface text-lg">최근 기록</h3>
-              <Link href="/student/history" className="text-primary font-label uppercase text-xs font-bold hover:text-primary-container">전체 보기</Link>
-            </div>
-            <div className="space-y-6">
-              {recentEvents.length > 0 ? (
-                recentEvents.map((event) => (
-                  <div key={event.key} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${event.iconClassName}`}>
-                        <span className="material-symbols-outlined text-sm">{event.icon}</span>
-                      </div>
-                      <div>
-                        <div className="font-body font-semibold text-on-surface">{event.title}</div>
-                        <div className="font-body text-xs text-on-surface-variant">{event.dateLabel}</div>
-                      </div>
+              <div className="mt-6 flex gap-2">
+                {stats.weeklyStudySeries.slice(-7).map((point) => (
+                  <div key={point.dateKey} className="flex-1 flex flex-col items-center gap-1">
+                    <div className={`w-full rounded-sm h-12 bg-surface-container-high relative overflow-hidden`}>
+                      <div 
+                        className={`absolute bottom-0 left-0 w-full ${point.isToday ? 'bg-primary' : 'bg-primary/30'}`} 
+                        style={{ height: `${Math.min((point.minutes / 240) * 100, 100)}%` }}
+                      ></div>
                     </div>
-                    <div className="font-headline text-xl text-on-surface">{event.timeLabel}</div>
+                    <span className="text-[10px] font-label font-bold text-on-surface-variant uppercase">{point.label}</span>
                   </div>
-                ))
-              ) : (
-                <div className="py-10 text-sm font-semibold text-on-surface-variant">
-                  표시할 최근 출석 기록이 없습니다.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-surface-container-lowest rounded-xl p-8 relative flex flex-col">
-            <div className="absolute inset-0 shadow-[0_24px_48px_rgba(27,28,25,0.03)] pointer-events-none rounded-xl"></div>
-            <h3 className="font-body font-semibold text-on-surface text-lg mb-6">주간 학습 시간</h3>
-            <div className="flex-1 flex items-end space-x-2 md:space-x-4 h-48 mt-auto">
-              {stats.weeklyStudySeries.map((point) => {
-                const heightRatio = point.minutes > 0 ? Math.max(point.minutes / weeklyMaxMinutes, 0.08) : 0.08;
-                const height = `${Math.round(heightRatio * 100)}%`;
-
-                return (
-                  <div key={point.dateKey} className={`flex flex-col items-center flex-1 ${point.isToday ? "" : point.minutes === 0 ? "opacity-70" : ""}`}>
-                    <div
-                      className={`w-full rounded-t-sm ${point.isToday ? "bg-primary shadow-[0_0_15px_rgba(35,66,42,0.2)]" : "bg-surface-container-highest"}`}
-                      style={{ height }}
-                    ></div>
-                    <span className={`font-label text-xs mt-2 uppercase ${point.isToday ? "text-primary font-bold" : "text-on-surface-variant"}`}>
-                      {point.isToday ? "오늘" : point.label}
-                    </span>
-                  </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -348,3 +278,4 @@ export default function OverviewPage() {
     </div>
   );
 }
+

@@ -19,7 +19,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user && user.email?.endsWith("@hmh.or.kr")) {
-      router.push("/dashboard");
+      router.push("/student/overview");
     }
   }, [user, router]);
 
@@ -39,7 +39,7 @@ export default function Login() {
         await auth.signOut();
         setError("효명고등학교(@hmh.or.kr) 계정으로만 로그인할 수 있습니다.");
       } else {
-        router.push("/dashboard");
+        router.push("/student/overview");
       }
     } catch (err: any) {
       console.error("Login error:", err);
@@ -62,7 +62,7 @@ export default function Login() {
         await auth.signOut();
         setError("효명고등학교(@hmh.or.kr) 계정으로만 로그인할 수 있습니다.");
       } else {
-        router.push("/dashboard");
+        router.push("/student/overview");
       }
     } catch (err: any) {
       console.error("Email login error:", err);
@@ -78,7 +78,7 @@ export default function Login() {
 
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-[#FDFCFB] text-[#3A5A40]">
+      <div className="flex justify-center items-center h-screen bg-background text-primary">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
@@ -89,10 +89,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#FDFCFB] overflow-hidden relative">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background overflow-hidden relative">
       {/* Background Decorative Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'rgba(35,66,42,0.05)' }} />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px]" style={{ backgroundColor: 'rgba(115,90,58,0.05)' }} />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] bg-primary/5" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] bg-secondary/5" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -100,18 +100,17 @@ export default function Login() {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full max-w-lg mx-4 z-10"
       >
-        <div className="backdrop-blur-xl rounded-[2.5rem] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white" style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}>
+        <div className="backdrop-blur-xl rounded-[2.5rem] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-surface-container-highest bg-surface/80">
           <div className="text-center mb-10">
             <motion.div 
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6"
-              style={{ backgroundColor: 'rgba(35,66,42,0.1)' }}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6 bg-primary/10"
             >
               <span className="material-symbols-outlined text-3xl text-primary font-bold">account_balance</span>
             </motion.div>
-            <h1 className="font-headline text-4xl font-bold text-stone-900 mb-2 tracking-tight">The Scholarly Atelier</h1>
-            <p className="font-label text-stone-500 uppercase tracking-widest text-xs font-bold">Spring Session 2024</p>
+            <h1 className="font-headline text-4xl font-bold text-on-surface mb-2 tracking-tight">The Scholarly Atelier</h1>
+            <p className="font-label text-on-surface-variant uppercase tracking-widest text-xs font-bold">Spring Session 2024</p>
           </div>
 
           <AnimatePresence mode="wait">
@@ -126,7 +125,7 @@ export default function Login() {
                 <button
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-3 py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-stone-800 transition-all active:scale-[0.98] disabled:opacity-70"
+                  className="w-full flex items-center justify-center gap-3 py-4 bg-on-surface text-surface rounded-2xl font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-70"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -138,7 +137,7 @@ export default function Login() {
                 </button>
                 <button
                   onClick={() => setIsEmailLogin(true)}
-                  className="w-full py-4 bg-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-200 transition-all active:scale-[0.98]"
+                  className="w-full py-4 bg-surface-container-low text-on-surface-variant rounded-2xl font-bold hover:bg-surface-container-high transition-all active:scale-[0.98]"
                 >
                   학번으로 로그인
                 </button>
@@ -153,38 +152,38 @@ export default function Login() {
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-500 uppercase ml-1">Email</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase ml-1">Email</label>
                   <input
                     type="email"
                     placeholder="24293@hmh.or.kr"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-stone-900"
+                    className="w-full px-5 py-4 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-on-surface"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-500 uppercase ml-1">Password</label>
+                  <label className="text-xs font-bold text-on-surface-variant uppercase ml-1">Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full px-5 py-4 bg-stone-50 border border-stone-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-stone-900"
+                    className="w-full px-5 py-4 bg-surface-container-lowest border border-outline-variant/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-on-surface"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-70 shadow-lg"
+                  className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-70 shadow-lg"
                 >
                   로그인
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsEmailLogin(false)}
-                  className="w-full py-2 text-stone-400 text-sm font-medium hover:text-stone-600 transition-colors"
+                  className="w-full py-2 text-outline text-sm font-medium hover:text-on-surface-variant transition-colors"
                 >
                   뒤로 가기
                 </button>
@@ -196,14 +195,14 @@ export default function Login() {
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="mt-6 p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl text-center border border-red-100"
+              className="mt-6 p-4 bg-error-container text-on-error-container text-xs font-bold rounded-xl text-center border border-error/10"
             >
               {error}
             </motion.div>
           )}
 
-          <div className="mt-10 pt-8 border-t border-stone-100 text-center">
-            <p className="text-stone-400 text-xs font-medium">
+          <div className="mt-10 pt-8 border-t border-outline-variant/15 text-center">
+            <p className="text-outline text-xs font-medium">
               효명고등학교 스마트 출결 시스템 v2.0
             </p>
           </div>
@@ -212,4 +211,5 @@ export default function Login() {
     </div>
   );
 }
+
 

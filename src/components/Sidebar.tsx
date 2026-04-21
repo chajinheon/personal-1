@@ -78,7 +78,7 @@ export default function Sidebar() {
     );
     for (let i = firstDay - 1; i >= 0; i--) {
       cells.push(
-        <div key={`prev-${i}`} className="py-1 text-on-surface-variant opacity-40 text-center text-xs">
+        <div key={`prev-${i}`} className="py-1 text-on-surface-variant opacity-40 text-center text-[10px]">
           {prevMonthDays - i}
         </div>
       );
@@ -100,12 +100,12 @@ export default function Sidebar() {
               )
             )
           }
-          className={`py-1 text-center text-xs cursor-pointer rounded transition-colors ${
+          className={`py-1 text-center text-[10px] cursor-pointer rounded-lg transition-all duration-300 ${
             selected
-              ? "text-on-primary bg-primary font-bold shadow-md"
+              ? "text-on-primary bg-primary font-bold shadow-sm"
               : today
-              ? "text-primary font-bold"
-              : "text-on-surface hover:bg-surface-variant"
+              ? "text-primary font-bold bg-primary/10"
+              : "text-on-surface hover:bg-surface-container-high"
           }`}
         >
           {d}
@@ -117,16 +117,16 @@ export default function Sidebar() {
   };
 
   return (
-    <nav className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-72 rounded-r-2xl bg-surface-container-low p-6 space-y-6 z-50 overflow-y-auto">
+    <nav className="hidden md:flex flex-col fixed left-0 top-0 h-screen w-72 rounded-r-[2rem] bg-surface-container-low p-8 space-y-8 z-50 overflow-y-auto border-r border-outline-variant/10">
       {/* Brand */}
       <div>
-        <div className="font-headline font-semibold italic text-xl text-primary mb-8">
+        <div className="font-headline font-semibold italic text-2xl text-primary mb-10 tracking-tight">
           Evergreen Academy
         </div>
 
         {/* Profile */}
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant">
+        <div className="flex items-center space-x-4 mb-10 bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center overflow-hidden border border-primary/10">
             {user?.photoURL ? (
               <img
                 src={user.photoURL}
@@ -139,11 +139,11 @@ export default function Sidebar() {
               </span>
             )}
           </div>
-          <div>
-            <h2 className="font-headline font-semibold text-lg text-on-surface">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-headline font-bold text-base text-on-surface truncate">
               {user?.displayName || "Student"}
             </h2>
-            <p className="text-sm font-label text-on-surface-variant uppercase font-bold">
+            <p className="text-[10px] font-label text-on-surface-variant uppercase tracking-widest font-black truncate">
               {user?.email?.split("@")[0] || "ID"}
             </p>
           </div>
@@ -151,7 +151,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav Links */}
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-3">
         <NavItem
           href="/dashboard"
           icon="dashboard"
@@ -166,71 +166,71 @@ export default function Sidebar() {
         />
         <NavItem
           href="#"
-          icon="campaign"
-          label="Notices"
+          icon="auto_stories"
+          label="Curriculum"
           active={false}
         />
         <NavItem
           href="#"
-          icon="settings"
-          label="Settings"
+          icon="insights"
+          label="Analytics"
           active={false}
         />
       </div>
 
       {/* Mini Calendar */}
-      <div className="mt-auto space-y-6">
-        <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-variant">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="font-body font-semibold text-on-surface text-sm">
+      <div className="mt-auto pt-8 border-t border-outline-variant/10 space-y-8">
+        <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm border border-outline-variant/10">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-headline font-bold text-on-surface text-xs tracking-tight">
               {monthNames[currentMonth.getMonth()]}{" "}
               {currentMonth.getFullYear()}
             </h4>
-            <div className="flex space-x-1 text-on-surface-variant">
+            <div className="flex space-x-1">
               <button
                 onClick={handlePrevMonth}
-                className="hover:text-primary transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
               >
-                <span className="material-symbols-outlined text-sm">
+                <span className="material-symbols-outlined text-xs">
                   chevron_left
                 </span>
               </button>
               <button
                 onClick={handleNextMonth}
-                className="hover:text-primary transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors"
               >
-                <span className="material-symbols-outlined text-sm">
+                <span className="material-symbols-outlined text-xs">
                   chevron_right
                 </span>
               </button>
             </div>
           </div>
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+          <div className="grid grid-cols-7 gap-1 text-center mb-2">
             {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map((d) => (
               <div
                 key={d}
-                className="text-[10px] font-label text-on-surface-variant uppercase"
+                className="text-[8px] font-label text-on-surface-variant/60 uppercase font-black"
               >
                 {d}
               </div>
             ))}
           </div>
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-body">
+          <div className="grid grid-cols-7 gap-1 text-center font-body">
             {renderCalendarDays()}
           </div>
         </div>
 
         {/* Help Center */}
-        <div>
+        <div className="pb-4">
           <a
-            className="flex items-center space-x-3 px-4 py-2 text-on-surface-variant hover:bg-surface-variant hover:translate-x-1 transition-transform duration-200 rounded-xl"
+            className="flex items-center space-x-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all duration-300 rounded-xl"
             href="#"
           >
-            <span className="material-symbols-outlined">help_outline</span>
-            <span className="font-label uppercase font-bold text-sm">
-              Help Center
+            <span className="material-symbols-outlined text-xl">help_outline</span>
+            <span className="font-label uppercase font-black text-[10px] tracking-widest">
+              Support
             </span>
           </a>
         </div>
@@ -253,19 +253,20 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ease-in-out ${
+      className={`flex items-center space-x-4 px-5 py-4 rounded-2xl transition-all duration-500 ease-in-out ${
         active
-          ? "bg-primary text-on-primary shadow-[0_24px_48px_rgba(0,0,0,0.04)]"
-          : "text-on-surface-variant hover:bg-surface-variant hover:translate-x-1 transition-transform duration-200"
+          ? "bg-primary text-on-primary shadow-lg shadow-primary/20 scale-[1.02]"
+          : "text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all duration-300"
       }`}
     >
       <span
-        className="material-symbols-outlined"
+        className="material-symbols-outlined text-xl"
         style={active ? { fontVariationSettings: "'FILL' 1" } : {}}
       >
         {icon}
       </span>
-      <span className="font-label uppercase font-bold text-sm">{label}</span>
+      <span className="font-label uppercase font-black text-xs tracking-[0.1em]">{label}</span>
     </Link>
   );
 }
+
